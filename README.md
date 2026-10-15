@@ -19,3 +19,7 @@ Monitor Forms spam and usage, and delete records/files in Netlify and the busine
 Node 22+, pnpm. Run `pnpm install --frozen-lockfile`, `pnpm dev`, `pnpm typecheck`, `pnpm lint`, `pnpm test`, and `pnpm build`. Local estimates work without credentials. Local Netlify storage requires a deployed Netlify site; do not interpret preparation as a completed submission.
 
 Company details: `src/config/business.ts`; policies: `src/config/legal.ts` and policy pages; estimate rates/materials: `src/config/pricing.ts`. Minimum print order is $30 CAD. Read LEGAL-LAUNCH.md before taking paid orders.
+
+## STL upload size
+
+STL originals can be up to 7 MB (7 × 1024 × 1024 bytes), with at most 60,000 triangles. Large ASCII STL files are converted to equivalent compact binary geometry only for the validation request, keeping that function payload below 3.5 MB. The original file is preserved in the direct Netlify Forms upload. Non-STL design reference uploads remain capped at 3 MB. The total native form upload stays below Netlify's 8 MB limit.

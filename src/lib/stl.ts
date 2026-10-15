@@ -5,7 +5,7 @@ export function parseSTL(buffer: ArrayBuffer): {
   positions: Float32Array;
 } {
   if (!buffer.byteLength || buffer.byteLength > MAX_FILE_BYTES)
-    throw new Error("Choose a non-empty STL file up to 3 MB.");
+    throw new Error("Choose a non-empty STL file up to 7 MB.");
   const view = new DataView(buffer);
   let values: number[] = [];
   const count = buffer.byteLength >= 84 ? view.getUint32(80, true) : 0;

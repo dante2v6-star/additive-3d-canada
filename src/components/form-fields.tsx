@@ -89,7 +89,9 @@ export function FormNotice({
   ) : null;
 }
 export async function sendRequest(form: FormData) {
-  const response = await fetch("/api/requests", { method: "POST", body: form });
+  const { prepareValidationForm } = await import("@/lib/prepare-upload");
+  const validation = await prepareValidationForm(form);
+  const response = await fetch("/api/requests", { method: "POST", body: validation });
   const payload = await response.json().catch(() => ({
     error: "The server could not process your request. Please try again.",
   }));

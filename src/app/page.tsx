@@ -54,7 +54,7 @@ const services = [
 const faqs = [
   [
     "What file types do you accept?",
-    "The instant estimator accepts binary and ASCII STL files up to 3 MB, with up to 60,000 triangles. Export your model in millimetres. For custom design, attach an image, PDF, STL, STEP or IGES file. Larger or unusual files can be discussed through a manual request.",
+    "The instant estimator accepts binary and ASCII STL files up to 7 MB, with up to 60,000 triangles. Export your model in millimetres. For custom design, attach an image, PDF, STL, STEP or IGES file up to 3 MB. Larger or unusual files can be discussed through a manual request.",
   ],
   [
     "What is the minimum order?",

@@ -6,7 +6,7 @@ import {
   FormNotice,
   sendRequest,
 } from "./form-fields";
-import { materials, MAX_FILE_BYTES } from "@/config/pricing";
+import { materials, MAX_REFERENCE_BYTES } from "@/config/pricing";
 import { RequestConsent } from "./request-consent";
 export function DesignForm() {
   const [busy, setBusy] = useState(false),
@@ -112,7 +112,7 @@ export function DesignForm() {
             onChange={(e) => {
               const f = e.target.files?.[0];
               setFileError("");
-              if (f && f.size > MAX_FILE_BYTES) {
+              if (f && f.size > MAX_REFERENCE_BYTES) {
                 setFileError("Reference files must be 3 MB or smaller.");
                 e.target.value = "";
                 setFilename("");

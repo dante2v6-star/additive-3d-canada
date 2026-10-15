@@ -1,8 +1,8 @@
-import { MAX_FILE_BYTES } from "@/config/pricing";
+import { MAX_FILE_BYTES, MAX_REFERENCE_BYTES } from "@/config/pricing";
 import { parseSTL } from "../stl";
 export async function validateFile(file: File, print: boolean) {
-  if (!file.size || file.size > MAX_FILE_BYTES)
-    throw new Error("Upload a non-empty file no larger than 3 MB.");
+  if (!file.size || file.size > (print ? MAX_FILE_BYTES : MAX_REFERENCE_BYTES))
+    throw new Error(print ? "Upload a non-empty STL no larger than 7 MB." : "Upload a non-empty reference file no larger than 3 MB.");
   const ext = file.name.split(".").pop()?.toLowerCase() || "";
   const allowed = print
     ? ["stl"]

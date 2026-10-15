@@ -61,7 +61,7 @@ export function QuoteForm() {
       return;
     }
     if (!/\.stl$/i.test(next.name) || next.size > MAX_FILE_BYTES) {
-      setError("Choose an STL file up to 3 MB.");
+      setError("Choose an STL file up to 7 MB.");
       return;
     }
     setLoading(true);
@@ -188,7 +188,7 @@ export function QuoteForm() {
               <span>
                 or <b>browse files</b>
               </span>
-              <small>Up to 3 MB · 60,000 triangles maximum</small>
+              <small>Up to 7 MB · 60,000 triangles maximum</small>
             </button>
           )}
         </div>

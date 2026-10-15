@@ -28,7 +28,7 @@ export async function POST(request: Request) {
   const length = Number(request.headers.get("content-length") || 0);
   if (length > 3.5 * 1024 * 1024)
     return NextResponse.json(
-      { error: "Request too large. Files must be 3 MB or smaller." },
+      { error: "Validation request too large. Reload the page and try again; large STLs are compacted automatically." },
       { status: 413 },
     );
   try {
@@ -44,7 +44,7 @@ export async function POST(request: Request) {
       if (size > 3.5 * 1024 * 1024) {
         await reader.cancel();
         return NextResponse.json(
-          { error: "Request too large. Files must be 3 MB or smaller." },
+          { error: "Validation request too large. Reload the page and try again; large STLs are compacted automatically." },
           { status: 413 },
         );
       }

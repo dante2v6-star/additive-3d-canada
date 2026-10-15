@@ -13,6 +13,7 @@ import {
 } from "../src/lib/server/email";
 import { POST } from "../src/app/api/requests/route";
 import { cubeSTL } from "./fixtures";
+import { prepareValidationForm } from "../src/lib/prepare-upload";
 import type { Settings } from "../src/lib/models";
 const settings: Settings = {
   material: "PLA",
@@ -332,6 +333,34 @@ test("Netlify prepares validated print and design submissions without email cred
     assert.equal((await POST(request(badFile))).status, 400);
   } finally {
     globalThis.fetch = originalFetch;
+    if (previous === undefined) delete process.env.DEPLOYMENT_PLATFORM;
+    else process.env.DEPLOYMENT_PLATFORM = previous;
+  }
+});
+
+test("A 7 MB ASCII STL is compacted for validation while its original is preserved", async () => {
+  const ascii = new TextDecoder().decode(cubeSTL(10, false));
+  const large = ascii.padEnd(MAX_FILE_BYTES, " ");
+  const data = requestForm("print");
+  const original = new File([large], "large-ascii.stl");
+  data.set("file", original);
+  const compact = await prepareValidationForm(data);
+  const validatedFile = compact.get("file") as File;
+  assert.equal(original.size, MAX_FILE_BYTES);
+  assert.equal((data.get("file") as File).size, MAX_FILE_BYTES);
+  assert.equal(validatedFile.size, 684);
+  assert.equal(validatedFile.name, original.name);
+  assert.deepEqual(parseSTL(await validatedFile.arrayBuffer()).analysis.dimensions, [10, 10, 10]);
+  const previous = process.env.DEPLOYMENT_PLATFORM;
+  process.env.DEPLOYMENT_PLATFORM = "netlify";
+  try {
+    assert.equal((await POST(request(compact))).status, 200);
+    data.set("file", new File([large + " "], "too-large.stl"));
+    await assert.rejects(() => prepareValidationForm(data), /7 MB/);
+    data.set("kind", "design");
+    data.set("file", original);
+    await assert.rejects(() => prepareValidationForm(data), /3 MB/);
+  } finally {
     if (previous === undefined) delete process.env.DEPLOYMENT_PLATFORM;
     else process.env.DEPLOYMENT_PLATFORM = previous;
   }

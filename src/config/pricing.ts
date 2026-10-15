@@ -74,5 +74,7 @@ export const colours = [
   "Red",
   "Other / discuss with us",
 ];
-export const MAX_FILE_BYTES = 3 * 1024 * 1024; // Under Vercel's 4.5 MB request limit, including multipart overhead.
+export const MAX_FILE_BYTES = 7 * 1024 * 1024; // Original STL sent directly to Netlify Forms (8 MB total submission).
+export const MAX_REFERENCE_BYTES = 3 * 1024 * 1024;
+export const MAX_VALIDATION_BYTES = 3 * 1024 * 1024; // Compact STL stays below the function's binary payload limit.
 export const MAX_TRIANGLES = 60000;
