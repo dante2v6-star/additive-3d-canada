@@ -15,16 +15,17 @@ The owner supplied the operating name **Additive 3D Canada**, public email **add
 - Retain the consent record and policy version emailed with requests. Historical policy text must also be archived by the business. Policy updates do not automatically authorize new uses.
 - There is no newsletter. Keep response emails project-related. If marketing is added, implement separate optional express consent, required identification and unsubscribe handling under CASL rather than treating a quote request as marketing consent.
 
-## Submission behavior
+## Submission behavior on Netlify
 
-1. Validate form, consent acknowledgements, policy version and file.
-2. Analyze STL and recompute price on the server; reject prohibited/oversized files.
-3. Validate configured email and anti-abuse services.
-4. Email BUSINESS_EMAIL with contact details, specifications, estimate, consent version/time and the attachment.
-5. Email the customer a confirmation with their request reference. Reply-To goes to the business inbox.
-6. Display success only after both provider calls are accepted. Nothing is charged or sent to production. No database/admin queue is provisioned; the business email is the request record.
+1. Validate form, consent acknowledgements, policy version and file on the server; recalculate STL estimates.
+2. Return normalized submission fields to the browser. Preparation does not save a request.
+3. The browser posts the validated summary and original attachment directly to the static Netlify Forms endpoint. Netlify applies its spam filtering and honeypot.
+4. Show an on-screen reference only after Netlify accepts the submission. No automatic customer confirmation email is sent, and no order or production is authorized.
+5. Netlify stores submissions and files; configured email notifications alert additive3dcanada@gmail.com. Review both verified and spam submissions and personally follow up.
 
-An email-provider timeout or failure can occur after the business email was accepted. Retrying an identical form uses idempotency keys; this is not a durable outbox and cannot guarantee inbox delivery. Monitor Resend events. Configure RESEND_API_KEY, BUSINESS_EMAIL, RESEND_FROM, the canonical URL, Turnstile and Upstash before public requests can work. Do not put private keys into public frontend variables.
+All received requests need manual review, including estimates. Direct form payloads can be forged. A successful submission does not guarantee notification-email delivery. Monitor the inbox and Netlify dashboard; reconcile duplicates by reference after interrupted retries. Configure form detection and an email notification in Netlify. No Resend, Turnstile or Upstash credentials are required for this flow.
+
+Netlify uploads use provider-generated file links rather than an authenticated private file vault. Do not solicit sensitive files or trade secrets through this form. Apply the retention schedule to both Netlify records/files and email correspondence; deletion is manual and provider caches may retain file links briefly.
 
 ## Primary guidance checked on October 14, 2026
 

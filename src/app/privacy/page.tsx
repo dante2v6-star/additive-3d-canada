@@ -8,23 +8,23 @@ const sections = [
   ],
   [
     "Information and purposes",
-    "Forms collect your name, email, phone, project description, intended use, specifications, print settings, requested dates, files and estimate details. We record the request reference, submission time, consent acknowledgements and policy version. These support project evaluation, quoting, follow-up and administering agreed work. Spam protection processes security tokens and hashed IP and email identifiers; hashes are not a guarantee of anonymity. Hosting and security providers may process device information, IP addresses and operational logs for delivery and abuse prevention.",
+    "Forms collect your name, email, phone, project description, intended use, specifications, print settings, requested dates, files and estimate details. We record the request reference, submission time, consent acknowledgements and policy version. These support project evaluation, quoting, follow-up and administering agreed work. Netlify Forms applies spam filtering and a hidden bot-trap field. Hosting and security providers may process device information, IP addresses and operational logs for delivery and abuse prevention.",
   ],
   [
     "Files and meaningful consent",
-    "Initial STL analysis runs in your browser. Files transfer only when you submit. The server validates uploads and recomputes estimates; files are attached to the business email, not publicly listed or executed. The form asks for permission to process the request and evaluate your files. Do not upload identity documents, payment information, medical records or unrelated sensitive information.",
+    "Initial STL analysis runs in your browser. Files transfer only when you submit. The server validates uploads and recomputes estimates; validated requests and files are stored in Netlify Forms for the owner to review. Uploaded files are available through provider-generated links; these links are not an authenticated private document vault. Do not share file links publicly. Files are not executed by the website. The form asks for permission to process the request and evaluate your files. Do not upload identity documents, payment information, medical records or unrelated sensitive information.",
   ],
   [
     "Communications and your choices",
-    "We send a confirmation and project-related replies. Submitting does not subscribe you to marketing. You can withdraw consent for optional uses or ask us to stop responding; this may prevent completion of the request. Information required for an existing agreement or legal obligation may be kept as permitted by law.",
+    "A successful submission displays an on-screen confirmation. We send project-related replies personally; the website does not send automatic customer confirmation emails. Submitting does not subscribe you to marketing. You can withdraw consent for optional uses or ask us to stop responding; this may prevent completion of the request. Information required for an existing agreement or legal obligation may be kept as permitted by law.",
   ],
   [
     "Providers and processing outside Canada",
-    "Resend handles notifications, attachments and confirmations. Our business email provider stores messages. When configured, Cloudflare Turnstile provides bot protection and Upstash Redis stores ten-minute rate-limit counters. Hosting providers process requests and may retain logs. The local preview runs on the owner’s computer; the selected public hosting provider is Netlify. Providers may process information outside Canada, subject to foreign laws and lawful access. We use providers for the stated purposes and do not sell customer information. Lawful disclosure obligations may apply.",
+    "Netlify hosts the site, stores form submissions and uploaded files, filters spam and sends business notifications. Netlify may use spam-filtering providers to evaluate submissions. Our business email provider stores notifications and project correspondence. Hosting providers process requests and may retain logs. The local preview runs on the owner’s computer; the selected public hosting provider is Netlify. Providers may process information outside Canada, subject to foreign laws and lawful access. We use providers for the stated purposes and do not sell customer information. Lawful disclosure obligations may apply.",
   ],
   [
     "Retention and deletion",
-    "Requests currently remain in the business email system. We retain information only as needed for the enquiry, agreed work, applicable recordkeeping duties and legitimate disputes. The owner must finalize and implement a documented retention schedule before public launch. Provider backups and logs may have separate periods. Deletion is not automated in this website.",
+    "Requests and files remain in Netlify Forms, and notifications and correspondence remain in the business email system. We retain information only as needed for the enquiry, agreed work, applicable recordkeeping duties and legitimate disputes. The owner must finalize and implement a documented retention schedule before public launch. Provider backups and logs may have separate periods. Deletion is not automated in this website. The owner must remove records from both Netlify Forms and email when deletion is appropriate. Provider caching may keep uploaded-file links available briefly after deletion.",
   ],
   [
     "Access, correction and complaints",

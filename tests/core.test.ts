@@ -173,7 +173,7 @@ function requestForm(kind = "design") {
     acknowledged: "true",
     privacyConsent: "true",
     uploadRights: "true",
-    policyVersion: "2026-10-14",
+    policyVersion: "2026-10-15",
     website: "",
     description: "A custom enclosure for a workshop sensor.",
     intendedUse: "Indoor use",
@@ -241,7 +241,7 @@ test("Both production form flows succeed with mocked providers and server recalc
   const calls: string[] = [];
   Object.assign(process.env, {
     NODE_ENV: "production",
-    DEPLOYMENT_PLATFORM: 'netlify',
+    DEPLOYMENT_PLATFORM: 'vercel',
     NEXT_PUBLIC_SITE_URL: "http://localhost:3000",
     RESEND_API_KEY: "test-key",
     RESEND_FROM: "Quotes <quotes@example.com>",
@@ -258,7 +258,7 @@ test("Both production form flows succeed with mocked providers and server recalc
     if (url.includes("redis.example")) {
       const command = JSON.parse(String(init?.body));
       assert.equal(command[0], "EVAL");
-      if(calls.filter(x=>x.includes('redis.example')).length%2===1){assert.equal(command[3],'request-rate:'+createHash('sha256').update('ip:203.0.113.24').digest('hex'));}
+      if(calls.filter(x=>x.includes('redis.example')).length%2===1){assert.equal(command[3],'request-rate:'+createHash('sha256').update('ip:192.0.2.99').digest('hex'));}
       return Response.json({ result: 1 });
     }
     if (url.includes("api.resend.com")) {
@@ -284,7 +284,7 @@ test("Both production form flows succeed with mocked providers and server recalc
       );
     }
     assert.equal(sent.length, 4);
-    assert.match(sent[0].text, /Policy version: 2026-10-14/);
+    assert.match(sent[0].text, /Policy version: 2026-10-15/);
     assert.match(sent[0].text, /Consent recorded at:/);
     assert.match(sent[2].text, /Privacy consent: Yes/);
     assert.match(sent[0].text, /\$30\.00 CAD/);
@@ -297,5 +297,42 @@ test("Both production form flows succeed with mocked providers and server recalc
     for (const key of Object.keys(process.env))
       if (!(key in oldEnv)) delete process.env[key];
     Object.assign(process.env, oldEnv);
+  }
+});
+
+test("Netlify prepares validated print and design submissions without email credentials or outbound calls", async () => {
+  const previous = process.env.DEPLOYMENT_PLATFORM;
+  const originalFetch = globalThis.fetch;
+  process.env.DEPLOYMENT_PLATFORM = "netlify";
+  globalThis.fetch = async () => { throw new Error("Preparation must not send data"); };
+  try {
+    for (const kind of ["print", "design"]) {
+      const data = requestForm(kind);
+      data.set("estimatedPrice", "0.01");
+      if (kind === "print") data.set("file", new File([cubeSTL()], "cube.stl"));
+      const result = await POST(request(data));
+      assert.equal(result.status, 200);
+      const payload = await result.json();
+      assert.equal(payload.prepared, true);
+      assert.equal(payload.fields["form-name"], `${kind}-requests`);
+      assert.equal(payload.fields.email, data.get("email"));
+      assert.match(payload.fields.details, /Privacy consent: Yes/);
+      assert.match(payload.fields.details, /Policy version: 2026-10-15/);
+      assert.match(payload.message, /no automatic confirmation email/);
+      if (kind === "print") {
+        assert.match(payload.fields.details, /\$30\.00 CAD/);
+        assert.doesNotMatch(payload.fields.details, /0\.01/);
+      }
+    }
+    const bot = requestForm("design");
+    bot.set("website", "https://spam.example");
+    assert.equal((await POST(request(bot))).status, 400);
+    const badFile = requestForm("print");
+    badFile.set("file", new File(["bad geometry"], "bad.stl"));
+    assert.equal((await POST(request(badFile))).status, 400);
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (previous === undefined) delete process.env.DEPLOYMENT_PLATFORM;
+    else process.env.DEPLOYMENT_PLATFORM = previous;
   }
 });

@@ -12,8 +12,8 @@ export function RequestConsent() {
           <Link href="/privacy" target="_blank" rel="noreferrer">
             Privacy Policy
           </Link>
-          . Requests and attachments are processed by email and security
-          providers, which may operate outside Canada. This does not subscribe
+          . Requests and attachments are stored by Netlify Forms and processed by
+          hosting, spam-filtering and email providers, which may operate outside Canada. This does not subscribe
           me to marketing.
         </span>
       </label>

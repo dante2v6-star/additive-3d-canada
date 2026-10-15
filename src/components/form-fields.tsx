@@ -95,5 +95,17 @@ export async function sendRequest(form: FormData) {
   }));
   if (!response.ok)
     throw new Error(payload.error || "Unable to submit your request.");
+  if (payload.prepared) {
+    const submission = new FormData();
+    for (const [key, value] of Object.entries(payload.fields as Record<string, string>)) {
+      submission.set(key, value);
+    }
+    const file = form.get("file");
+    if (file instanceof File && file.size) submission.set("file", file);
+    // This static HTML endpoint is registered by Netlify at deploy time.
+    // Leave Content-Type to the browser so multipart file boundaries are correct.
+    const stored = await fetch("/__forms.html", { method: "POST", body: submission });
+    if (!stored.ok) throw new Error("Your request could not be submitted. Please retry or contact us by email. No order has been placed.");
+  }
   return payload as { message: string; id: string };
 }

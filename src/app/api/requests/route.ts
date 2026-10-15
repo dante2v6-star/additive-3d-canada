@@ -120,6 +120,32 @@ export async function POST(request: Request) {
         "Contact consent": "Yes",
       };
     }
+    const consentDetails = {
+      ...details,
+      "Privacy consent": "Yes — request processing only; no marketing",
+      "File-use permission": "Yes — evaluation and separately approved work",
+      "Policy version": common.policyVersion,
+      "Consent recorded at": new Date().toISOString(),
+    };
+    if (process.env.DEPLOYMENT_PLATFORM === "netlify") {
+      // Prepare only. The browser posts directly to Netlify so its native spam
+      // filters see the visitor's connection, rather than a proxy function's IP.
+      return NextResponse.json({
+        id: common.requestId,
+        prepared: true,
+        fields: {
+          "form-name": common.kind === "print" ? "print-requests" : "design-requests",
+          name: customer.name,
+          email: customer.email,
+          phone: customer.phone,
+          requestId: common.requestId,
+          kind: common.kind,
+          details: Object.entries(consentDetails).map(([key, value]) => `${key}: ${String(value)}`).join("\n\n"),
+          website: "",
+        },
+        message: `Your request has been submitted for review. Your reference is ${common.requestId.slice(0, 8)}. We will reply personally; no automatic confirmation email is sent. Production starts only after a separately approved quote.`,
+      });
+    }
     if (
       !process.env.RESEND_API_KEY ||
       !z.email().safeParse(process.env.BUSINESS_EMAIL).success ||

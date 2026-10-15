@@ -1,6 +1,6 @@
 // Confirm the registered identity, contact and operational policies before launch.
 export const legal = {
-  version: "2026-10-14",
+  version: "2026-10-15",
   legalName: "Additive 3D Canada",
   privacyEmail: "additive3dcanada@gmail.com",
   registrationInProgress: true,

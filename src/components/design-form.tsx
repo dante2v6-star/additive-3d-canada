@@ -3,7 +3,6 @@ import { useRef, useState } from "react";
 import Link from "next/link";
 import {
   ContactFields,
-  SpamProtection,
   FormNotice,
   sendRequest,
 } from "./form-fields";
@@ -143,7 +142,6 @@ export function DesignForm() {
         </p>
       )}
       <RequestConsent />
-      <SpamProtection />
       <FormNotice status={status} />
       <button className="button" disabled={busy || status?.kind === "success"}>
         {busy

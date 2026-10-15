@@ -10,7 +10,6 @@ import { RequestConsent } from "./request-consent";
 import type { Analysis, Settings } from "@/lib/models";
 import {
   ContactFields,
-  SpamProtection,
   FormNotice,
   sendRequest,
 } from "./form-fields";
@@ -334,8 +333,7 @@ export function QuoteForm() {
           <Link href="/privacy">Privacy Policy</Link>.
         </p>
         <RequestConsent />
-        <SpamProtection />
-        <FormNotice status={status} />
+          <FormNotice status={status} />
         <div className="actions">
           <button
             className="button"
