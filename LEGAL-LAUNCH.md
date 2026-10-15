@@ -4,7 +4,7 @@ This website is a quotation/enquiry service, not incorporation, a securities off
 
 ## Details still needed
 
-The owner supplied the operating name **Additive 3D Canada**, public email **addititive3dcanada@gmail.com**, and phone **905-746-4910**. Registration is in progress. These are populated in the site, but the name must not be presented as an already registered corporation. Confirm the registered identity once approved. The email spelling is preserved exactly as supplied.
+The owner supplied the operating name **Additive 3D Canada**, public email **additive3dcanada@gmail.com**, and phone **905-746-4910**. Registration is in progress. These are populated in the site, but the name must not be presented as an already registered corporation. Confirm the registered identity once approved. The email spelling is preserved exactly as supplied.
 
 - Registered entity/proprietor name trading as Additive 3D, public business phone and address, privacy officer and working public contact email. Set business details in `src/config/business.ts` and legal details in `src/config/legal.ts`.
 - Adopt a written retention schedule for unaccepted enquiries, customer files, order records, consents, delivery logs and backups. Implement mailbox deletion and provider retention reviews; this application does not automatically erase email records.

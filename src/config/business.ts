@@ -5,7 +5,7 @@ export const business = {
   city: "London, Ontario",
   address: "1235 Richmond St",
   postalAddress: "1235 Richmond St, London, Ontario, Canada",
-  email: "addititive3dcanada@gmail.com",
+  email: "additive3dcanada@gmail.com",
   phone: "905-746-4910",
   hours: "Every day · 10:00 a.m.–11:00 p.m. (Eastern Time)",
   url: process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
