@@ -1,0 +1,13 @@
+[build]
+  command = "node node_modules/next/dist/bin/next build --webpack"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "22"
+  NEXT_TELEMETRY_DISABLED = "1"
+
+# Netlify automatically applies its OpenNext adapter for Next.js.
+# Configure runtime secrets in Netlify, not in this tracked file.
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
