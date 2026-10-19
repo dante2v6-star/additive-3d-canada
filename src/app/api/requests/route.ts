@@ -5,8 +5,8 @@ import { validateFile } from "@/lib/server/files";
 import { storage } from "@/lib/server/storage";
 import { protect } from "@/lib/server/security";
 import { deliverRequest } from "@/lib/server/email";
-import { estimate, cad } from "@/lib/quote";
-import { materials } from "@/config/pricing";
+import { estimateOrder, cad } from "@/lib/quote";
+import { materials, MAX_TRIANGLES } from "@/config/pricing";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 export async function POST(request: Request) {
@@ -63,15 +63,27 @@ export async function POST(request: Request) {
     };
     let details: Record<string, unknown>;
     let attachment;
-    const input = data.get("file");
+    const inputs = data.getAll("file").filter((input): input is File => input instanceof File && input.size > 0);
+    if (inputs.length > 5) throw new Error("Add up to five STL files per request.");
+    if (inputs.length > 1 && common.kind !== "print") throw new Error("Attach one design reference file.");
+    if (inputs.length > 1 && process.env.DEPLOYMENT_PLATFORM !== "netlify") throw new Error("Multi-part requests require Netlify Forms.");
+    const input = inputs[0];
     const file = input instanceof File && input.size > 0 ? input : undefined;
     if (common.kind === "print") {
       if (!file)
         throw new Error("An STL file is required for a print request.");
       const settings = settingsSchema.parse(raw);
-      const analysis = await validateFile(file, true);
-      if (!analysis) throw new Error("Unable to analyze STL.");
-      const quote = estimate(analysis, settings);
+      const quantities = raw.partQuantities === undefined ? inputs.map(() => settings.quantity) : z.array(z.number().int().min(1).max(1000)).min(1).max(5).parse(JSON.parse(String(raw.partQuantities)));
+      if (quantities.length !== inputs.length) throw new Error("Each STL must have a quantity.");
+      const parts = [];
+      for (let index = 0; index < inputs.length; index++) {
+        const analysis = await validateFile(inputs[index], true);
+        if (!analysis) throw new Error("Unable to analyze STL.");
+        parts.push({ analysis, quantity: quantities[index] });
+      }
+      if (parts.reduce((sum, part) => sum + part.analysis.triangles, 0) > MAX_TRIANGLES) throw new Error("The STL files exceed 60,000 triangles combined.");
+      const quote = estimateOrder(parts, settings);
+      const analysis = quote.analysis;
       const notes = z
         .string()
         .max(4000)
@@ -83,13 +95,15 @@ export async function POST(request: Request) {
             : "Estimate review",
         Material: materials[settings.material].label,
         Colour: settings.colour,
-        Quantity: settings.quantity,
+        "STL designs": inputs.length,
+        "Parts": parts.map((part, index) => `${index + 1}. ${inputs[index].name} — quantity ${part.quantity}; ${part.analysis.dimensions.map(value => value.toFixed(2)).join(" × ")} mm`).join("\n"),
+        Quantity: quote.settings.quantity,
         "Print quality": settings.quality,
         Infill: `${settings.infill}%`,
         "Estimate CAD": quote.manual
           ? "Manual review required (minimum $30 CAD)"
           : `${cad(quote.total)} CAD`,
-        "Minimum order": "$30 CAD",
+        "Minimum order": "$30 CAD applied once to the combined request",
         "Dimensions (mm)": analysis.dimensions
           .map((n) => n.toFixed(2))
           .join(" × "),

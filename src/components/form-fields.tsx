@@ -102,8 +102,8 @@ export async function sendRequest(form: FormData) {
     for (const [key, value] of Object.entries(payload.fields as Record<string, string>)) {
       submission.set(key, value);
     }
-    const file = form.get("file");
-    if (file instanceof File && file.size) submission.set("file", file);
+    const files = form.getAll("file").filter((file): file is File => file instanceof File && file.size > 0);
+    files.forEach((file, index) => submission.set(index === 0 ? "file" : `file${index + 1}`, file));
     // This static HTML endpoint is registered by Netlify at deploy time.
     // Leave Content-Type to the browser so multipart file boundaries are correct.
     const stored = await fetch("/__forms.html", { method: "POST", body: submission });

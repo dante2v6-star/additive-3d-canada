@@ -23,3 +23,9 @@ Company details: `src/config/business.ts`; policies: `src/config/legal.ts` and p
 ## STL upload size
 
 STL originals can be up to 7 MB (7 × 1024 × 1024 bytes), with at most 60,000 triangles. Large ASCII STL files are converted to equivalent compact binary geometry only for the validation request, keeping that function payload below 3.5 MB. The original file is preserved in the direct Netlify Forms upload. Non-STL design reference uploads remain capped at 3 MB. The total native form upload stays below Netlify's 8 MB limit.
+
+## Multi-part print requests and social previews
+
+The print basket accepts up to five STL designs. Each design has its own quantity; material, colour, quality and infill are shared. Quantities total at most 1,000. The 7 MB file-size and 60,000-triangle limits apply to all STL files combined. EstimateOrder applies the setup fee and $30 minimum once to the combined request, and any geometry warning makes the complete estimate manual-review only. Every STL is validated again on the server. Original attachments use Netlify fields file, file2, file3, file4 and file5, all registered in public/__forms.html. Requests identify each filename and quantity.
+
+Social sharing metadata explicitly references /social-preview-v3, a 1200x630 logo card composed from the supplied brand banner. Existing messaging-app previews may require their cache to refresh or a fresh share URL query (e.g. ?share=3).

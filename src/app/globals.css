@@ -1622,3 +1622,15 @@ input.sr-only {
     gap: 12px;
   }
 }
+
+.part-list { display: grid; gap: 12px; margin: 20px 0; }
+.part-row { display: flex; align-items: center; gap: 12px; border: 1px solid #dce3ee; border-radius: 12px; padding: 14px; min-width: 0; }
+.part-row.selected { border-color: #2356ad; background: #f6f9ff; }
+.part-select { display: flex; align-items: center; gap: 10px; text-align: left; flex: 1; min-width: 0; border: 0; background: transparent; color: inherit; cursor: pointer; }
+.part-select span { min-width: 0; }
+.part-select strong { display: block; overflow-wrap: anywhere; }
+.part-select small { display: block; margin-top: 4px; color: #59677a; }
+.part-row label { width: 85px; flex-shrink: 0; font-size: 12px; }
+.part-row input { width: 100%; margin-top: 5px; }
+.part-remove { border: 0; background: transparent; padding: 8px; cursor: pointer; }
+@media (max-width: 480px) { .part-row { flex-wrap: wrap; } .part-select { flex-basis: calc(100% - 50px); } .part-row label { order: 3; width: 100%; } }

@@ -3,8 +3,8 @@ import { useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Upload, FileBox, X, Info, Check } from "lucide-react";
-import { materials, colours, MAX_FILE_BYTES } from "@/config/pricing";
-import { estimate, cad } from "@/lib/quote";
+import { materials, colours, MAX_FILE_BYTES, MAX_TRIANGLES } from "@/config/pricing";
+import { estimateOrder, cad } from "@/lib/quote";
 import { useQuoteTool } from "@/lib/use-quote-tool";
 import { RequestConsent } from "./request-consent";
 import type { Analysis, Settings } from "@/lib/models";
@@ -25,90 +25,59 @@ const defaults: Settings = {
   colour: "Black",
 };
 export function QuoteForm() {
-  const [file, setFile] = useState<File | null>(null),
-    [analysis, setAnalysis] = useState<Analysis | null>(null),
-    [positions, setPositions] = useState<Float32Array>(),
-    [settings, setSettings] = useState<Settings>(defaults),
-    [drag, setDrag] = useState(false),
-    [loading, setLoading] = useState(false),
-    [busy, setBusy] = useState(false),
-    [status, setStatus] = useState<{
-      kind: "success" | "error";
-      text: string;
-    } | null>(null),
-    [error, setError] = useState("");
-  const input = useRef<HTMLInputElement>(null);
-  const requestId = useRef("");
-  const sequence = useRef(0);
-  const quote = analysis ? estimate(analysis, settings) : null;
+  type Part = { id: string; file: File; analysis: Analysis; positions: Float32Array; quantity: number };
+  const [parts, setParts] = useState<Part[]>([]);
+  const [selected, setSelected] = useState("");
+  const [settings, setSettings] = useState<Settings>(defaults);
+  const [drag, setDrag] = useState(false), [loading, setLoading] = useState(false), [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState<{ kind: "success" | "error"; text: string } | null>(null);
+  const [error, setError] = useState("");
+  const input = useRef<HTMLInputElement>(null), requestId = useRef("");
+  const adding = useRef(false);
+  const active = parts.find(part => part.id === selected) || parts[0];
+  const quote = parts.length ? estimateOrder(parts, settings) : null;
   useQuoteTool(quote);
+  function changed() { requestId.current = ""; setStatus(null); }
   const update = <K extends keyof Settings>(key: K, value: Settings[K]) => {
-    setSettings((s) => ({ ...s, [key]: value }));
-    requestId.current = "";
-    setStatus(null);
+    setSettings(current => ({ ...current, [key]: value })); changed();
   };
-  async function choose(next?: File) {
-    const seq = ++sequence.current;
-    setLoading(false);
-    setError("");
-    setFile(null);
-    setAnalysis(null);
-    setPositions(undefined);
-    setStatus(null);
-    requestId.current = "";
-    if (!next) {
-      setLoading(false);
-      return;
-    }
-    if (!/\.stl$/i.test(next.name) || next.size > MAX_FILE_BYTES) {
-      setError("Choose an STL file up to 7 MB.");
-      return;
-    }
-    setLoading(true);
+  async function choose(files: File[]) {
+    if (adding.current || busy || !files.length) return;
+    adding.current = true; setLoading(true); setError(""); changed();
     try {
+      if (parts.length + files.length > 5) throw new Error("Add up to five STL files per request.");
+      if (parts.reduce((sum, part) => sum + part.quantity, 0) + files.length > 1000) throw new Error("Reduce quantities before adding another design; the maximum is 1,000 printed parts.");
+      if (parts.reduce((sum, part) => sum + part.file.size, 0) + files.reduce((sum, file) => sum + file.size, 0) > MAX_FILE_BYTES)
+        throw new Error("Your STL files must total 7 MB or less. Remove a part or export smaller files.");
       const { parseSTL } = await import("@/lib/stl");
-      const result = parseSTL(await next.arrayBuffer());
-      if (seq !== sequence.current) return;
-      setFile(next);
-      setAnalysis(result.analysis);
-      setPositions(result.positions);
-    } catch (e) {
-      if (seq === sequence.current)
-        setError(e instanceof Error ? e.message : "Unable to read this STL.");
-    } finally {
-      if (seq === sequence.current) setLoading(false);
-    }
+      const added: Part[] = [];
+      for (const file of files) {
+        if (!/\.stl$/i.test(file.name)) throw new Error("Choose STL files only.");
+        const parsed = parseSTL(await file.arrayBuffer());
+        added.push({ id: crypto.randomUUID(), file, ...parsed, quantity: 1 });
+      }
+      if ([...parts, ...added].reduce((sum, part) => sum + part.analysis.triangles, 0) > MAX_TRIANGLES)
+        throw new Error("The selected files exceed 60,000 triangles combined. Export simpler meshes.");
+      setParts(current => [...current, ...added]); setSelected(added[0].id);
+    } catch (e) { setError(e instanceof Error ? e.message : "Unable to read these STL files."); }
+    finally { adding.current = false; setLoading(false); }
   }
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!file || !analysis) {
-      setError("Upload an STL before submitting a print request.");
-      input.current?.focus();
-      return;
-    }
-    setBusy(true);
-    setStatus(null);
+    if (!parts.length || loading || busy) return;
+    setBusy(true); setStatus(null);
     const data = new FormData(event.currentTarget);
-    data.set("kind", "print");
-    data.set("file", file);
-    Object.entries(settings).forEach(([k, v]) => data.set(k, String(v)));
-    const submitter = (event.nativeEvent as SubmitEvent)
-      .submitter as HTMLButtonElement | null;
+    data.set("kind", "print"); data.delete("file");
+    for (const part of parts) data.append("file", part.file);
+    data.set("partQuantities", JSON.stringify(parts.map(part => part.quantity)));
+    Object.entries(settings).forEach(([key, value]) => data.set(key, String(value)));
+    const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
     data.set("manual", String(submitter?.value === "manual" || quote?.manual));
     if (!requestId.current) requestId.current = crypto.randomUUID();
     data.set("requestId", requestId.current);
-    try {
-      const r = await sendRequest(data);
-      setStatus({ kind: "success", text: r.message });
-    } catch (e) {
-      setStatus({
-        kind: "error",
-        text:
-          e instanceof Error ? e.message : "Request failed. Please try again.",
-      });
-    } finally {
-      setBusy(false);
-    }
+    try { const result = await sendRequest(data); setStatus({ kind: "success", text: result.message }); }
+    catch (e) { setStatus({ kind: "error", text: e instanceof Error ? e.message : "Request failed. Please try again." }); }
+    finally { setBusy(false); }
   }
   return (
     <form
@@ -120,113 +89,40 @@ export function QuoteForm() {
       }}
     >
       <div className="quote-main">
-        <div className="step-heading">
-          <span>1</span>
-          <h3>Upload your model</h3>
-          <small>STL · millimetres</small>
+        <div className="step-heading"><span>1</span><h3>Add your parts</h3><small>STL · millimetres</small></div>
+        <input ref={input} className="sr-only" id="stl-upload" aria-label="Upload STL files" type="file" accept=".stl" multiple disabled={loading || busy}
+          onChange={event => { void choose(Array.from(event.target.files || [])); event.target.value = ""; }} />
+        <div className={`dropzone ${drag ? "dragging" : ""}`} onDragOver={event => { event.preventDefault(); setDrag(true); }} onDragLeave={() => setDrag(false)}
+          onDrop={event => { event.preventDefault(); setDrag(false); void choose(Array.from(event.dataTransfer.files)); }}>
+          <button type="button" className="upload-button" onClick={() => input.current?.click()} disabled={loading || busy || parts.length >= 5}>
+            <div className="upload-icon"><Upload size={25} /></div>
+            <strong>{loading ? "Analyzing geometry…" : parts.length ? "Add more STL parts" : "Drop your STL files here"}</strong>
+            <span>or <b>browse files</b></span><small>Up to 5 files · 7 MB and 60,000 triangles combined</small>
+          </button>
         </div>
-        <input
-          ref={input}
-          className="sr-only"
-          id="stl-upload"
-          aria-label="Upload STL file"
-          type="file"
-          accept=".stl"
-          onChange={(e) => {
-            void choose(e.target.files?.[0]);
-            e.target.value = "";
-          }}
-        />
-        <div
-          className={`dropzone ${drag ? "dragging" : ""}`}
-          onDragOver={(e) => {
-            e.preventDefault();
-            setDrag(true);
-          }}
-          onDragLeave={() => setDrag(false)}
-          onDrop={(e) => {
-            e.preventDefault();
-            setDrag(false);
-            if (e.dataTransfer.files.length !== 1) {
-              setError("Please upload one STL at a time.");
-              return;
-            }
-            void choose(e.dataTransfer.files[0]);
-          }}
-        >
-          {file ? (
-            <div className="uploaded">
-              <FileBox />
-              <div>
-                <strong>{file.name}</strong>
-                <span>
-                  {(file.size / 1024).toFixed(0)} KB ·{" "}
-                  {analysis?.triangles.toLocaleString()} triangles
-                </span>
-              </div>
-              <button
-                type="button"
-                aria-label="Remove STL file"
-                onClick={() => void choose()}
-              >
-                <X size={18} />
-              </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              className="upload-button"
-              onClick={() => input.current?.click()}
-              disabled={loading}
-            >
-              <div className="upload-icon">
-                <Upload size={25} />
-              </div>
-              <strong>
-                {loading ? "Analyzing geometry…" : "Drop your STL file here"}
-              </strong>
-              <span>
-                or <b>browse files</b>
-              </span>
-              <small>Up to 7 MB · 60,000 triangles maximum</small>
+        <p className="micro">Different designs can share one request. The $30 CAD minimum applies once to the combined order.</p>
+        {error && <p className="field-error" role="alert">{error}</p>}
+        <div className="part-list">
+          {parts.map((part, index) => <div className={`part-row ${active?.id === part.id ? "selected" : ""}`} key={part.id}>
+            <button type="button" className="part-select" aria-label={`Preview part ${index + 1}: ${part.file.name}`} aria-pressed={active?.id === part.id} onClick={() => setSelected(part.id)}>
+              <FileBox size={20} /><span><strong>{part.file.name}</strong><small>{(part.file.size / 1024).toFixed(0)} KB · {part.analysis.triangles.toLocaleString()} triangles</small></span>
             </button>
-          )}
+            <label>Quantity<input aria-label={`Quantity for part ${index + 1}`} type="number" min={1} max={1000 - parts.filter(other => other.id !== part.id).reduce((sum, other) => sum + other.quantity, 0)} required value={part.quantity} disabled={busy || loading}
+              onChange={event => { const otherCount = parts.filter(other => other.id !== part.id).reduce((sum, other) => sum + other.quantity, 0); const quantity = Math.max(1, Math.min(1000 - otherCount, Math.floor(Number(event.target.value) || 1))); setParts(current => current.map(item => item.id === part.id ? { ...item, quantity } : item)); changed(); }} /></label>
+            <button type="button" className="part-remove" aria-label={`Remove part ${index + 1}: ${part.file.name}`} disabled={busy || loading} onClick={() => { setParts(current => current.filter(item => item.id !== part.id)); setError(""); changed(); }}><X size={18} /></button>
+          </div>)}
         </div>
-        {error && (
-          <p className="field-error" role="alert">
-            {error}
-          </p>
-        )}
-        {positions && (
-          <>
-            <Preview positions={positions} />
-            <p className="micro">
-              Drag to rotate · Scroll to zoom · STL units assumed to be
-              millimetres
-            </p>
-            <div className="geometry-stats">
-              <div>
-                <span>BOUNDING BOX</span>
-                <strong>
-                  {analysis?.dimensions.map((v) => v.toFixed(1)).join(" × ")} mm
-                </strong>
-              </div>
-              <div>
-                <span>ENCLOSED VOLUME</span>
-                <strong>{analysis?.volumeCm3.toFixed(2)} cm³</strong>
-              </div>
-            </div>
-            {analysis?.warnings.map((w) => (
-              <p className="notice warning" key={w}>
-                {w}
-              </p>
-            ))}
-          </>
-        )}
+        {active && <>
+          <p className="micro">Preview: {active.file.name}</p><Preview positions={active.positions} />
+          <p className="micro">Drag to rotate · Scroll to zoom · STL units assumed to be millimetres</p>
+          <div className="geometry-stats"><div><span>BOUNDING BOX</span><strong>{active.analysis.dimensions.map(value => value.toFixed(1)).join(" × ")} mm</strong></div><div><span>ENCLOSED VOLUME</span><strong>{active.analysis.volumeCm3.toFixed(2)} cm³</strong></div></div>
+          {active.analysis.warnings.map(warning => <p className="notice warning" key={warning}>{warning}</p>)}
+        </>}
         <div className="step-heading">
           <span>2</span>
-          <h3>Make it yours</h3>
+          <h3>Print settings</h3>
         </div>
+        <p className="micro">These material, colour, quality and infill settings apply to all parts in this request.</p>
         <div className="field-grid">
           <label>
             Material
@@ -244,26 +140,6 @@ export function QuoteForm() {
               ))}
             </select>
             <small>{materials[settings.material].description}</small>
-          </label>
-          <label>
-            Quantity
-            <input
-              aria-label="Quantity"
-              type="number"
-              min={1}
-              max={1000}
-              required
-              value={settings.quantity}
-              onChange={(e) =>
-                update(
-                  "quantity",
-                  Math.max(
-                    1,
-                    Math.min(1000, Math.floor(Number(e.target.value) || 1)),
-                  ),
-                )
-              }
-            />
           </label>
           <label>
             Print quality
@@ -329,7 +205,7 @@ export function QuoteForm() {
           </span>
         </label>
         <p className="micro">
-          Your file is sent only when you submit. See our{" "}
+          Your files are sent only when you submit. See our{" "}
           <Link href="/privacy">Privacy Policy</Link>.
         </p>
         <RequestConsent />
@@ -340,7 +216,7 @@ export function QuoteForm() {
             type="submit"
             name="action"
             value="print"
-            disabled={!file || busy || status?.kind === "success"}
+            disabled={!parts.length || loading || busy || status?.kind === "success"}
           >
             {busy
               ? "Submitting…"
@@ -355,7 +231,7 @@ export function QuoteForm() {
             type="submit"
             name="action"
             value="manual"
-            disabled={!file || busy || status?.kind === "success"}
+            disabled={!parts.length || loading || busy || status?.kind === "success"}
           >
             Request Manual Quote
           </button>
@@ -368,7 +244,7 @@ export function QuoteForm() {
         </p>
       </div>
       <aside className="quote-summary">
-        <div className="eyebrow">YOUR ESTIMATE</div>
+        <div className="eyebrow">COMBINED ORDER ESTIMATE</div>
         <div className="estimate-price" aria-live="polite">
           {quote && !quote.manual ? (
             <>
@@ -384,10 +260,10 @@ export function QuoteForm() {
             </>
           )}
         </div>
-        <p className="minimum">Minimum order: $30 CAD</p>
+        <p className="minimum">One $30 CAD minimum for all parts</p>
         <p className="muted">
           {quote?.manual
-            ? "We’ll review your file and send a price before production."
+            ? "We’ll review your files and send a price before production."
             : "An estimate today. A confirmed quote before we print."}
         </p>
         <div className="summary-lines">
@@ -398,7 +274,7 @@ export function QuoteForm() {
           <div>
             <span>Quantity</span>
             <strong>
-              {settings.quantity} {settings.quantity === 1 ? "part" : "parts"}
+              {quote?.settings.quantity || 0} printed parts · {parts.length} {parts.length === 1 ? "design" : "designs"}
             </strong>
           </div>
           <div>

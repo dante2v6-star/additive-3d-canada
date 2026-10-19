@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {createHash} from 'node:crypto';
 import { parseSTL } from "../src/lib/stl";
-import { estimate } from "../src/lib/quote";
+import { estimate, estimateOrder, cad } from "../src/lib/quote";
 import { materials, pricing, MAX_FILE_BYTES } from "../src/config/pricing";
 import { settingsSchema, customerSchema } from "../src/lib/validation";
 import { validateFile } from "../src/lib/server/files";
@@ -360,6 +360,54 @@ test("A 7 MB ASCII STL is compacted for validation while its original is preserv
     data.set("kind", "design");
     data.set("file", original);
     await assert.rejects(() => prepareValidationForm(data), /3 MB/);
+  } finally {
+    if (previous === undefined) delete process.env.DEPLOYMENT_PLATFORM;
+    else process.env.DEPLOYMENT_PLATFORM = previous;
+  }
+});
+
+test("Different STL designs share one setup fee and one $30 minimum", () => {
+  const tiny = parseSTL(cubeSTL(10)).analysis;
+  assert.equal(estimateOrder([{ analysis: tiny, quantity: 1 }, { analysis: tiny, quantity: 1 }], settings).total, 30);
+  const medium = parseSTL(cubeSTL(40)).analysis;
+  const combined = estimateOrder([{ analysis: medium, quantity: 1 }, { analysis: medium, quantity: 1 }], settings);
+  const separate = estimate(medium, settings).total * 2;
+  assert.ok(combined.total > 30);
+  assert.ok(combined.total < separate);
+  assert.equal(combined.settings.quantity, 2);
+  const manual = { ...tiny, warnings: ["Open model"] };
+  assert.equal(estimateOrder([{ analysis: tiny, quantity: 1 }, { analysis: manual, quantity: 1 }], settings).manual, true);
+});
+
+test("Multi-part requests preserve both files and independently validate quantities", async () => {
+  const previous = process.env.DEPLOYMENT_PLATFORM;
+  process.env.DEPLOYMENT_PLATFORM = "netlify";
+  try {
+    const data = requestForm("print");
+    data.append("file", new File([cubeSTL(10)], "first.stl"));
+    data.append("file", new File([cubeSTL(20)], "second.stl"));
+    data.set("partQuantities", JSON.stringify([2, 3]));
+    const validation = await prepareValidationForm(data);
+    assert.equal(data.getAll("file").length, 2);
+    assert.equal(validation.getAll("file").length, 2);
+    const response = await POST(request(validation));
+    assert.equal(response.status, 200);
+    const prepared = await response.json();
+    assert.match(prepared.fields.details, /first.stl — quantity 2/);
+    assert.match(prepared.fields.details, /second.stl — quantity 3/);
+    assert.match(prepared.fields.details, /Quantity: 5/);
+    const expected = estimateOrder([{ analysis: parseSTL(cubeSTL(10)).analysis, quantity: 2 }, { analysis: parseSTL(cubeSTL(20)).analysis, quantity: 3 }], settings);
+    assert.ok(prepared.fields.details.includes(`Estimate CAD: ${cad(expected.total)} CAD`));
+    data.set("partQuantities", "[2]");
+    assert.equal((await POST(request(await prepareValidationForm(data)))).status, 400);
+    data.set("partQuantities", "[1000,1]");
+    assert.equal((await POST(request(await prepareValidationForm(data)))).status, 400);
+    for (let i = 0; i < 4; i++) data.append("file", new File([cubeSTL()], `${i}.stl`));
+    await assert.rejects(() => prepareValidationForm(data), /five/);
+    const oversized = requestForm("print");
+    oversized.append("file", new File([new Uint8Array(MAX_FILE_BYTES)], "one.stl"));
+    oversized.append("file", new File([cubeSTL()], "two.stl"));
+    await assert.rejects(() => prepareValidationForm(oversized), /7 MB/);
   } finally {
     if (previous === undefined) delete process.env.DEPLOYMENT_PLATFORM;
     else process.env.DEPLOYMENT_PLATFORM = previous;
